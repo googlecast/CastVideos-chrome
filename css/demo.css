@@ -1,0 +1,141 @@
+
+body {
+  background-color:#eeeeff;
+  font-family: 'Roboto', "Open Sans", "Verdana", Georgia, Serif;
+}
+
+
+#title_text {
+  width:100%;
+  text-align: center ;
+}
+
+#main_video {
+  width:600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#media_control {
+  width:595px;
+  height:30px;
+  margin:-3px 0px 0px 0px;
+  padding:3px;
+  opacity:0.6;
+  background-color:#acaccc;
+  font-size: 90%;
+  font-family: 'Roboto', "Open Sans", "Verdana", Georgia, Serif;
+}
+
+.button {
+  margin: 5px;
+  font-size: 100%;
+  font-family: 'Roboto', "Open Sans", "Verdana", Georgia, Serif;
+}
+
+.volume {
+  width:60px;
+  margin-left:8px;
+}
+
+#muteText {
+  width:30px;
+  margin-left:3px;
+}
+
+.muteButton {
+  font-size: 110%;
+  font-family: 'Roboto', "Open Sans", "Verdana", Georgia, Serif;
+}
+
+.imageIcon {
+  padding:3px 0px 0px 0px;
+  width:25px;
+}
+
+.fullscreenIcon {
+  float:right;
+  margin:5px;
+  display:block;
+  padding:0px 0px 0px 0px;
+  width:25px;
+}
+
+.progress {
+  width:80px;
+  margin-left:8px;
+}
+
+#casticonactive {
+  float:right;
+  margin:5px;
+  display:none;
+}
+
+#casticonidle {
+  float:right;
+  margin:5px;
+  display:block;
+}
+
+div.imageSub { position: relative; }
+div.imageSub img { z-index: 1; }
+div.imageSub div {
+  position: absolute;
+  left: 0%;
+  right: 0%;
+  bottom: 0;
+  padding: 4px;
+}
+div.imageSub div.blackbg {
+  z-index: 2;
+  bottom: 150px;
+  left: 70px;
+  width: 460px;
+  height: 100px;
+  color: #000;
+  background-color: #000;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+  filter: alpha(opacity=50);
+  opacity: 0.5;
+  font-size:120%;
+  display:none;
+}
+div.imageSub div.label {
+  z-index: 3;
+  bottom: 150px;
+  left: 70px;
+  width: 460px;
+  height: 100px;
+  color: white;
+  font-size:120%;
+  display:none;
+}
+
+#carousel {
+  width:800px;
+  margin-top:20px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#video_image {
+  width: 600px;
+  height: 360px;
+}
+
+.thumb {
+  float: left;
+  margin:10px;
+}
+
+.thumbnail {
+  width:140px;
+  height:80px;
+}
+
+
+.vertical {
+    -webkit-transform: rotate(90deg);
+
+}
