@@ -29,9 +29,6 @@ var MEDIA_SOURCE_ROOT =
  */
 var PROGRESS_BAR_WIDTH = 600;
 
-/** @const {number} Time in milliseconds for minimal progress update */
-var TIMER_STEP = 1000;
-
 /** @const {number} Cast volume upon initial connection */
 var DEFAULT_VOLUME = 0.5;
 
@@ -80,17 +77,12 @@ var CastPlayer = function() {
     this.currentMediaTime = 0;
     /** @type {number} A number for current media duration */
     this.currentMediaDuration = -1;
-    /** @type {?number} A timer for tracking progress of media */
-    this.timer = null;
 
     /** @type {Object} media contents from JSON */
     this.mediaContents = null;
 
     /** @type {boolean} Fullscreen mode on/off */
     this.fullscreen = false;
-
-    /** @type {function()} */
-    this.incrementMediaTimeHandler = this.incrementMediaTime.bind(this);
 
     this.setupLocalPlayer();
     this.addVideoThumbs();
@@ -127,7 +119,6 @@ CastPlayer.prototype.initializeCastPlayer = function() {
  */
 
 CastPlayer.prototype.switchPlayer = function() {
-    this.stopProgressTimer();
     this.resetVolumeSlider();
     this.playerHandler.stop();
     this.playerState = PLAYER_STATE.IDLE;
@@ -229,7 +220,6 @@ var PlayerHandler = function(castPlayer) {
             this.seekTo(castPlayer.currentMediaTime);
         }
         this.play();
-        castPlayer.startProgressTimer();
         this.updateDisplayMessage();
     };
 
@@ -241,10 +231,10 @@ var PlayerHandler = function(castPlayer) {
         return this.target.getMediaDuration();
     };
 
-    this.updateDisplayMessage = function () {
+    this.updateDisplayMessage = function() {
         this.target.updateDisplayMessage();
-    }
-;
+    };
+
     this.setVolume = function(volumeSliderPosition) {
         this.target.setVolume(volumeSliderPosition);
     };
@@ -274,7 +264,10 @@ var PlayerHandler = function(castPlayer) {
 /**
  * Set the PlayerHandler target to use the video-element player
  */
-CastPlayer.prototype.setupLocalPlayer = function () {
+CastPlayer.prototype.setupLocalPlayer = function() {
+    /** @const {number} Time in milliseconds for minimal progress update */
+    var TIMER_STEP = 1000;
+
     var localPlayer = document.getElementById('video_element');
     localPlayer.addEventListener(
         'loadeddata', this.onMediaLoadedLocally.bind(this));
@@ -282,20 +275,26 @@ CastPlayer.prototype.setupLocalPlayer = function () {
     // This object will implement PlayerHandler callbacks with localPlayer
     var playerTarget = {};
 
+    /** @type {?number} A timer for tracking progress of media */
+    playerTarget.timer = null;
+
     playerTarget.play = function() {
         localPlayer.play();
+        this.startProgressTimer();
 
         var vi = document.getElementById('video_image');
         vi.style.display = 'none';
         localPlayer.style.display = 'block';
     };
 
-    playerTarget.pause = function () {
+    playerTarget.pause = function() {
         localPlayer.pause();
+        this.stopProgressTimer();
     };
 
-    playerTarget.stop = function () {
+    playerTarget.stop = function() {
         localPlayer.stop();
+        this.stopProgressTimer();
     };
 
     playerTarget.load = function(mediaIndex) {
@@ -312,7 +311,7 @@ CastPlayer.prototype.setupLocalPlayer = function () {
         return localPlayer.duration;
     };
 
-    playerTarget.updateDisplayMessage = function () {
+    playerTarget.updateDisplayMessage = function() {
         document.getElementById('playerstate').style.display = 'none';
         document.getElementById('playerstatebg').style.display = 'none';
         document.getElementById('video_image_overlay').style.display = 'none';
@@ -342,6 +341,50 @@ CastPlayer.prototype.setupLocalPlayer = function () {
         localPlayer.currentTime = time;
     };
 
+    /**
+     * Starts the timer to increment the media progress bar
+     */
+    playerTarget.startProgressTimer = function() {
+        this.stopProgressTimer();
+
+        // Start progress timer
+
+        /** @type {function()} */
+        this.incrementMediaTimeHandler = this.incrementMediaTime.bind(this);
+
+        this.timer =
+            setInterval(this.incrementMediaTimeHandler, TIMER_STEP);
+    };
+
+    /**
+     * Stops the timer to increment the media progress bar
+     */
+    playerTarget.stopProgressTimer = function() {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+    };
+
+    /**
+     * Helper function
+     * Increment media current position by 1 second
+     */
+    playerTarget.incrementMediaTime = function() {
+        // First sync with the current player's time
+        this.currentMediaTime = this.playerHandler.getCurrentMediaTime();
+        this.currentMediaDuration = this.playerHandler.getMediaDuration();
+
+        if (this.playerState === PLAYER_STATE.PLAYING) {
+            if (this.currentMediaTime < this.currentMediaDuration) {
+                this.currentMediaTime += 1;
+                this.updateProgressBarByTimer();
+            } else {
+                this.endPlayback();
+            }
+        }
+    }.bind(this);
+
     this.playerHandler.setTarget(playerTarget);
 
     this.playerHandler.setVolume(DEFAULT_VOLUME * FULL_VOLUME_HEIGHT);
@@ -356,7 +399,7 @@ CastPlayer.prototype.setupLocalPlayer = function () {
 /**
  * Set the PlayerHandler target to use the remote player
  */
-CastPlayer.prototype.setupRemotePlayer = function () {
+CastPlayer.prototype.setupRemotePlayer = function() {
     var castSession = cast.framework.CastContext.getInstance().getCurrentSession();
 
     // Add event listeners for player changes which may occur outside sender app
@@ -392,12 +435,32 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         }.bind(this)
     );
 
+    this.remotePlayerController.addEventListener(
+        cast.framework.RemotePlayerEventType.CURRENT_TIME_CHANGED,
+        function() {
+            this.currentMediaTime = this.playerHandler.getCurrentMediaTime();
+            this.currentMediaDuration = this.playerHandler.getMediaDuration();
+            this.updateProgressBarByTimer();
+        }.bind(this)
+    );
+
+    this.remotePlayerController.addEventListener(
+        cast.framework.RemotePlayerEventType.PLAYER_STATE_CHANGED,
+        function() {
+            switch(this.remotePlayer.playerState) {
+                case chrome.cast.media.PlayerState.IDLE:
+                    this.endPlayback();
+                    break;
+            }
+        }.bind(this)
+    );
+
     // This object will implement PlayerHandler callbacks with
     // remotePlayerController, and makes necessary UI updates specific
     // to remote playback
     var playerTarget = {};
 
-    playerTarget.play = function () {
+    playerTarget.play = function() {
         if (this.remotePlayer.isPaused) {
             this.remotePlayerController.playOrPause();
         }
@@ -408,17 +471,17 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         localPlayer.style.display = 'none';
     }.bind(this);
 
-    playerTarget.pause = function () {
+    playerTarget.pause = function() {
         if (!this.remotePlayer.isPaused) {
             this.remotePlayerController.playOrPause();
         }
     }.bind(this);
 
-    playerTarget.stop = function () {
+    playerTarget.stop = function() {
          this.remotePlayerController.stop();
     }.bind(this);
 
-    playerTarget.load = function (mediaIndex) {
+    playerTarget.load = function(mediaIndex) {
         console.log('Loading...' + this.mediaContents[mediaIndex]['title']);
         var mediaInfo = new chrome.cast.media.MediaInfo(
             this.mediaContents[mediaIndex]['sources'][0], 'video/mp4');
@@ -432,10 +495,10 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         var request = new chrome.cast.media.LoadRequest(mediaInfo);
         castSession.loadMedia(request).then(
             this.playerHandler.loaded.bind(this.playerHandler),
-            function (errorCode) {
+            function(errorCode) {
                 this.playerState = PLAYER_STATE.ERROR;
                 console.log('Remote media load error: ' +
-                    CastPlayer.getErrorMessage(errorCode));
+                    this.getErrorMessage(errorCode));
             }.bind(this));
     }.bind(this);
 
@@ -447,7 +510,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         return this.remotePlayer.duration;
     }.bind(this);
 
-    playerTarget.updateDisplayMessage = function () {
+    playerTarget.updateDisplayMessage = function() {
         document.getElementById('playerstate').style.display = 'block';
         document.getElementById('playerstatebg').style.display = 'block';
         document.getElementById('video_image_overlay').style.display = 'block';
@@ -456,7 +519,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
             this.playerState + ' on ' + castSession.getCastDevice().friendlyName;
     }.bind(this);
 
-    playerTarget.setVolume = function (volumeSliderPosition) {
+    playerTarget.setVolume = function(volumeSliderPosition) {
         // Add resistance to avoid loud volume
         var currentVolume = this.remotePlayer.volumeLevel;
         var p = document.getElementById('audio_bg_level');
@@ -475,13 +538,13 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         this.remotePlayerController.setVolumeLevel();
     }.bind(this);
 
-    playerTarget.mute = function () {
+    playerTarget.mute = function() {
         if (!this.remotePlayer.isMuted) {
             this.remotePlayerController.muteOrUnmute();
         }
     }.bind(this);
 
-    playerTarget.unMute = function () {
+    playerTarget.unMute = function() {
         if (this.remotePlayer.isMuted) {
             this.remotePlayerController.muteOrUnmute();
         }
@@ -491,7 +554,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         return this.remotePlayer.isMuted;
     }.bind(this);
 
-    playerTarget.seekTo = function (time) {
+    playerTarget.seekTo = function(time) {
         this.remotePlayer.currentTime = time;
         this.remotePlayerController.seek();
     }.bind(this);
@@ -596,46 +659,6 @@ CastPlayer.prototype.setVolume = function(mouseEvent) {
 };
 
 /**
- * Starts the timer to increment the media progress bar
- */
-CastPlayer.prototype.startProgressTimer = function() {
-    this.stopProgressTimer();
-
-    // Start progress timer
-    this.timer =
-        setInterval(this.incrementMediaTimeHandler, TIMER_STEP);
-};
-
-/**
- * Stops the timer to increment the media progress bar
- */
-CastPlayer.prototype.stopProgressTimer = function() {
-    if (this.timer) {
-        clearInterval(this.timer);
-        this.timer = null;
-    }
-};
-
-/**
- * Helper function
- * Increment media current position by 1 second
- */
-CastPlayer.prototype.incrementMediaTime = function() {
-    // First sync with the current player's time
-    this.currentMediaTime = this.playerHandler.getCurrentMediaTime();
-    this.currentMediaDuration = this.playerHandler.getMediaDuration();
-
-    if (this.playerState === PLAYER_STATE.PLAYING) {
-        if (this.currentMediaTime < this.currentMediaDuration) {
-            this.currentMediaTime += 1;
-            this.updateProgressBarByTimer();
-        } else {
-            this.endPlayback();
-        }
-    }
-};
-
-/**
  * Update progress bar based on timer
  */
 CastPlayer.prototype.updateProgressBarByTimer = function() {
@@ -651,10 +674,6 @@ CastPlayer.prototype.updateProgressBarByTimer = function() {
     p.style.width = pp + 'px';
     var pi = document.getElementById('progress_indicator');
     pi.style.marginLeft = -21 - PROGRESS_BAR_WIDTH + pp + 'px';
-
-    if (pp >= PROGRESS_BAR_WIDTH) {
-        this.endPlayback();
-    }
 };
 
 /**
@@ -662,7 +681,6 @@ CastPlayer.prototype.updateProgressBarByTimer = function() {
  */
 CastPlayer.prototype.endPlayback = function() {
     this.currentMediaTime = 0;
-    this.stopProgressTimer();
     this.playerState = PLAYER_STATE.IDLE;
     this.playerHandler.updateDisplayMessage();
 
@@ -674,7 +692,7 @@ CastPlayer.prototype.endPlayback = function() {
  * @param {number} durationInSec
  * @return {string}
  */
-CastPlayer.getDurationString = function(durationInSec) {
+CastPlayer.prototype.getDurationString = function(durationInSec) {
     var durationString = '' + Math.floor(durationInSec % 60);
     var durationInMin = Math.floor(durationInSec / 60);
     if (durationInMin === 0) {
@@ -693,7 +711,7 @@ CastPlayer.getDurationString = function(durationInSec) {
  */
 CastPlayer.prototype.updateMediaDuration = function() {
     document.getElementById('duration').innerHTML =
-        CastPlayer.getDurationString(this.currentMediaDuration);
+        this.getDurationString(this.currentMediaDuration);
 };
 
 /**
@@ -896,7 +914,7 @@ CastPlayer.prototype.addVideoThumbs = function() {
  * @param {chrome.cast.Error} error
  * @return {string} error message
  */
-CastPlayer.getErrorMessage = function(error) {
+CastPlayer.prototype.getErrorMessage = function(error) {
     switch (error.code) {
         case chrome.cast.ErrorCode.API_NOT_INITIALIZED:
             return 'The API is not initialized.' +
@@ -923,6 +941,12 @@ CastPlayer.getErrorMessage = function(error) {
             return 'The operation timed out.' +
                 (error.description ? ' :' + error.description : '');
     }
+
+    if (typeof error === "string") {
+        return error;
+    }
+
+    return '';
 };
 
 /**
