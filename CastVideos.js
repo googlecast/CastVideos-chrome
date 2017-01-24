@@ -241,10 +241,10 @@ var PlayerHandler = function(castPlayer) {
         return this.target.getMediaDuration();
     };
 
-    this.updateDisplayMessage = function () {
+    this.updateDisplayMessage = function() {
         this.target.updateDisplayMessage();
-    }
-;
+    };
+
     this.setVolume = function(volumeSliderPosition) {
         this.target.setVolume(volumeSliderPosition);
     };
@@ -274,7 +274,7 @@ var PlayerHandler = function(castPlayer) {
 /**
  * Set the PlayerHandler target to use the video-element player
  */
-CastPlayer.prototype.setupLocalPlayer = function () {
+CastPlayer.prototype.setupLocalPlayer = function() {
     var localPlayer = document.getElementById('video_element');
     localPlayer.addEventListener(
         'loadeddata', this.onMediaLoadedLocally.bind(this));
@@ -290,11 +290,11 @@ CastPlayer.prototype.setupLocalPlayer = function () {
         localPlayer.style.display = 'block';
     };
 
-    playerTarget.pause = function () {
+    playerTarget.pause = function() {
         localPlayer.pause();
     };
 
-    playerTarget.stop = function () {
+    playerTarget.stop = function() {
         localPlayer.stop();
     };
 
@@ -312,7 +312,7 @@ CastPlayer.prototype.setupLocalPlayer = function () {
         return localPlayer.duration;
     };
 
-    playerTarget.updateDisplayMessage = function () {
+    playerTarget.updateDisplayMessage = function() {
         document.getElementById('playerstate').style.display = 'none';
         document.getElementById('playerstatebg').style.display = 'none';
         document.getElementById('video_image_overlay').style.display = 'none';
@@ -356,7 +356,7 @@ CastPlayer.prototype.setupLocalPlayer = function () {
 /**
  * Set the PlayerHandler target to use the remote player
  */
-CastPlayer.prototype.setupRemotePlayer = function () {
+CastPlayer.prototype.setupRemotePlayer = function() {
     var castSession = cast.framework.CastContext.getInstance().getCurrentSession();
 
     // Add event listeners for player changes which may occur outside sender app
@@ -397,7 +397,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     // to remote playback
     var playerTarget = {};
 
-    playerTarget.play = function () {
+    playerTarget.play = function() {
         if (this.remotePlayer.isPaused) {
             this.remotePlayerController.playOrPause();
         }
@@ -408,17 +408,17 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         localPlayer.style.display = 'none';
     }.bind(this);
 
-    playerTarget.pause = function () {
+    playerTarget.pause = function() {
         if (!this.remotePlayer.isPaused) {
             this.remotePlayerController.playOrPause();
         }
     }.bind(this);
 
-    playerTarget.stop = function () {
+    playerTarget.stop = function() {
          this.remotePlayerController.stop();
     }.bind(this);
 
-    playerTarget.load = function (mediaIndex) {
+    playerTarget.load = function(mediaIndex) {
         console.log('Loading...' + this.mediaContents[mediaIndex]['title']);
         var mediaInfo = new chrome.cast.media.MediaInfo(
             this.mediaContents[mediaIndex]['sources'][0], 'video/mp4');
@@ -432,7 +432,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         var request = new chrome.cast.media.LoadRequest(mediaInfo);
         castSession.loadMedia(request).then(
             this.playerHandler.loaded.bind(this.playerHandler),
-            function (errorCode) {
+            function(errorCode) {
                 this.playerState = PLAYER_STATE.ERROR;
                 console.log('Remote media load error: ' +
                     CastPlayer.getErrorMessage(errorCode));
@@ -447,7 +447,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         return this.remotePlayer.duration;
     }.bind(this);
 
-    playerTarget.updateDisplayMessage = function () {
+    playerTarget.updateDisplayMessage = function() {
         document.getElementById('playerstate').style.display = 'block';
         document.getElementById('playerstatebg').style.display = 'block';
         document.getElementById('video_image_overlay').style.display = 'block';
@@ -456,7 +456,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
             this.playerState + ' on ' + castSession.getCastDevice().friendlyName;
     }.bind(this);
 
-    playerTarget.setVolume = function (volumeSliderPosition) {
+    playerTarget.setVolume = function(volumeSliderPosition) {
         // Add resistance to avoid loud volume
         var currentVolume = this.remotePlayer.volumeLevel;
         var p = document.getElementById('audio_bg_level');
@@ -475,13 +475,13 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         this.remotePlayerController.setVolumeLevel();
     }.bind(this);
 
-    playerTarget.mute = function () {
+    playerTarget.mute = function() {
         if (!this.remotePlayer.isMuted) {
             this.remotePlayerController.muteOrUnmute();
         }
     }.bind(this);
 
-    playerTarget.unMute = function () {
+    playerTarget.unMute = function() {
         if (this.remotePlayer.isMuted) {
             this.remotePlayerController.muteOrUnmute();
         }
@@ -491,7 +491,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         return this.remotePlayer.isMuted;
     }.bind(this);
 
-    playerTarget.seekTo = function (time) {
+    playerTarget.seekTo = function(time) {
         this.remotePlayer.currentTime = time;
         this.remotePlayerController.seek();
     }.bind(this);
