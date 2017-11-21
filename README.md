@@ -24,7 +24,7 @@ See the developer guide and release notes at https://developers.google.com/cast/
  4. Open a browser and point to your page at http://[YOUR_SERVER_LOCATION]/CastVideos-chrome/
 
 ## Documentation
-* Cast APIs: http://developers.google.com/cast/docs/chrome_sender
+* Cast APIs: http://developers.google.com/cast/docs/chrome_sender_integrate
 
 ## References and How to report bugs
 * Cast APIs: http://developers.google.com/cast/docs/reference/chrome
