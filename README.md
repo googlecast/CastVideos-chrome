@@ -23,7 +23,7 @@ See the developer guide and release notes at https://developers.google.com/cast/
  2. Use the default media receiver app: no change or change YOUR_APP_ID to your own in CastVideos.js
  4. Open a browser and point to your page at http://[YOUR_SERVER_LOCATION]/CastVideos-chrome/
 
-##Documentation
+## Documentation
 * Cast APIs: http://developers.google.com/cast/docs/chrome_sender
 
 ## References and How to report bugs
