@@ -8,7 +8,7 @@ This Google Cast demo app shows how to cast videos from a Chrome browser using C
 Here is the list of other reference apps:
 * [Android Sender: CastVideos-android](https://github.com/googlecast/CastVideos-android)
 * [iOS Sender: CastVideos-ios](https://github.com/googlecast/CastVideos-ios)
-* [Receiver: CastReferencePlayer](https://github.com/googlecast/CastReferencePlayer)
+* [CAF Receiver: BasicReceiverCAF](https://github.com/googlecast/BasicReceiverCAF)
 
 ## Setup Instructions
 
@@ -26,16 +26,20 @@ See the developer guide and release notes at https://developers.google.com/cast/
 ## Documentation
 * Cast APIs: http://developers.google.com/cast/docs/chrome_sender_integrate
 
-## References and How to report bugs
+## References
+* Developer Guides: https://developers.google.com/cast/docs/developers
 * Cast APIs: http://developers.google.com/cast/docs/reference/chrome
-* Design Checklist (http://developers.google.com/cast/docs/design_checklist)
-* If you find any issues, please open a bug here on GitHub
+* Design Checklist: http://developers.google.com/cast/docs/design_checklist
 
-How to make contributions?
+## How to report bugs
+* For Cast SDK issues: https://developers.google.com/cast/docs/support
+* For sample apps issues, please open a bug here on GitHub
+
+## How to make contributions?
 Please read and follow the steps in the CONTRIBUTING.md
 
-License
-See LICENSE.md
+## License
+See [LICENSE](LICENSE)
 
 ## Terms
 Your use of this sample is subject to, and by using or downloading the sample files you agree to comply with, the [Google APIs Terms of Service](https://developers.google.com/terms/) and the [Google Cast SDK Additional Developer Terms of Service](https://developers.google.com/cast/docs/terms/).
