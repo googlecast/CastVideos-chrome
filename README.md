@@ -1,5 +1,4 @@
 # CastVideos-chrome (reference Chrome sender app)
-===============================
 
 This Google Cast demo app shows how to cast videos from a Chrome browser using Cast Chrome Sender SDK. It serves to demonstrate how to write a HTML5/Javascript Cast sender app that is fully compliant with the Design Checklist.
 
@@ -8,7 +7,7 @@ This Google Cast demo app shows how to cast videos from a Chrome browser using C
 Here is the list of other reference apps:
 * [Android Sender: CastVideos-android](https://github.com/googlecast/CastVideos-android)
 * [iOS Sender: CastVideos-ios](https://github.com/googlecast/CastVideos-ios)
-* [CAF Receiver: BasicReceiverCAF](https://github.com/googlecast/BasicReceiverCAF)
+* [CAF Receiver: CastReceiver](https://github.com/googlecast/CastReceiver)
 
 ## Setup Instructions
 
@@ -24,19 +23,19 @@ See the developer guide and release notes at https://developers.google.com/cast/
  4. Open a browser and point to your page at http://[YOUR_SERVER_LOCATION]/CastVideos-chrome/
 
 ## Documentation
-* Cast APIs: http://developers.google.com/cast/docs/chrome_sender_integrate
+* [Google Cast Chrome Sender Overview](https://developers.google.com/cast/docs/chrome_sender/)
+* [Developer Guides](https://developers.google.com/cast/docs/developers)
 
 ## References
-* Developer Guides: https://developers.google.com/cast/docs/developers
-* Cast APIs: http://developers.google.com/cast/docs/reference/chrome
-* Design Checklist: http://developers.google.com/cast/docs/design_checklist
+* [Chrome Sender Reference](http://developers.google.com/cast/docs/reference/chrome)
+* [Design Checklist](http://developers.google.com/cast/docs/design_checklist)
 
 ## How to report bugs
-* For Cast SDK issues: https://developers.google.com/cast/docs/support
-* For sample apps issues, please open a bug here on GitHub
+* [Google Cast SDK Support](https://developers.google.com/cast/docs/support)
+* For sample apps issues, please open a bug here on GitHub.
 
 ## How to make contributions?
-Please read and follow the steps in the CONTRIBUTING.md
+Please read and follow the steps in the [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 See [LICENSE](LICENSE)
@@ -45,4 +44,4 @@ See [LICENSE](LICENSE)
 Your use of this sample is subject to, and by using or downloading the sample files you agree to comply with, the [Google APIs Terms of Service](https://developers.google.com/terms/) and the [Google Cast SDK Additional Developer Terms of Service](https://developers.google.com/cast/docs/terms/).
 
 ## Google+
- Google Cast Developers Community on Google+ [http://goo.gl/TPLDxj](http://goo.gl/TPLDxj)
+[Google Cast Developers Community on Google+](http://goo.gl/TPLDxj)
