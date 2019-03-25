@@ -4,23 +4,17 @@ This Google Cast demo app shows how to cast videos from a Chrome browser using C
 
 **This is a reference sender app to be used as the starting point for your Chrome sender app**
 
-Here is the list of other reference apps:
-* [Android Sender: CastVideos-android](https://github.com/googlecast/CastVideos-android)
-* [iOS Sender: CastVideos-ios](https://github.com/googlecast/CastVideos-ios)
-* [CAF Receiver: CastReceiver](https://github.com/googlecast/CastReceiver)
+[List of reference apps and tutorials](https://developers.google.com/cast/docs/downloads)
 
 ## Setup Instructions
-
-# Pre-requisites
- 1. Get a Chromecast device
- 2. Install appropriate Chrome browser
-
-See the developer guide and release notes at https://developers.google.com/cast/ for more details.
-
-# Steps:
- 1. Put all files on your own server
- 2. Use the default media receiver app: no change or change YOUR_APP_ID to your own in CastVideos.js
- 4. Open a browser and point to your page at http://[YOUR_SERVER_LOCATION]/CastVideos-chrome/
+1. Get a Google Cast device and get it set up for development: https://developers.google.com/cast/docs/developers#setup_for_development.
+1. [Optional] Register an application on the Developers Console [http://cast.google.com/publish](http://cast.google.com/publish "Google Cast Developer Console").
+  The easiest would be to use the Styled Media Receiver option. You will get an App ID when you finish registering your application. This project uses a
+  published Application ID that can be used to run the app without using your own ID but if you need to do any console debugging, you would need to have your own ID.
+1. Install the latest Chrome browser.
+1. Put all files on your own server.
+1. Use the default media receiver app or change YOUR_APP_ID to your own in CastVideos.js.
+1. Open a browser and point to your page at http://[YOUR_SERVER_LOCATION]/CastVideos-chrome/.
 
 ## Documentation
 * [Google Cast Chrome Sender Overview](https://developers.google.com/cast/docs/chrome_sender/)
@@ -31,17 +25,14 @@ See the developer guide and release notes at https://developers.google.com/cast/
 * [Design Checklist](http://developers.google.com/cast/docs/design_checklist)
 
 ## How to report bugs
-* [Google Cast SDK Support](https://developers.google.com/cast/docs/support)
-* For sample apps issues, please open a bug here on GitHub.
+* [Google Cast SDK Support](https://developers.google.com/cast/support)
+* For sample app issues, open an issue on this GitHub repo.
 
-## How to make contributions?
+## Contributions
 Please read and follow the steps in the [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
-See [LICENSE](LICENSE)
+See [LICENSE](LICENSE).
 
 ## Terms
 Your use of this sample is subject to, and by using or downloading the sample files you agree to comply with, the [Google APIs Terms of Service](https://developers.google.com/terms/) and the [Google Cast SDK Additional Developer Terms of Service](https://developers.google.com/cast/docs/terms/).
-
-## Google+
-[Google Cast Developers Community on Google+](http://goo.gl/TPLDxj)
