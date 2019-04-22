@@ -16,74 +16,72 @@
 
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>Cast Videos: Google Cast Chrome Sender SDK Demo App</title>
-<link rel="icon" type="image/x-icon" href="imagefiles/favicon.ico" />
-<link rel="icon" type="image/png" href="imagefiles/favicon-16x16.png" />
-<link rel="icon" type="image/png" href="imagefiles/favicon-32x32.png" />
-<link rel="icon" type="image/png" href="imagefiles/favicon-64x64.png" />
-<link rel="stylesheet" type="text/css" href="css/CastVideos.css">
-<link href='//fonts.googleapis.com/css?family=Roboto&subset=latin,cyrillic-ext,greek-ext,latin-ext' rel='stylesheet' type='text/css'>
+  <title>Cast Videos: Google Cast Chrome Sender SDK Demo App</title>
+  <link rel="icon" type="image/x-icon" href="imagefiles/favicon.ico" />
+  <link rel="icon" type="image/png" href="imagefiles/favicon-16x16.png" />
+  <link rel="icon" type="image/png" href="imagefiles/favicon-32x32.png" />
+  <link rel="icon" type="image/png" href="imagefiles/favicon-64x64.png" />
+  <link rel="stylesheet" type="text/css" href="css/CastVideos.css">
+  <link href='//fonts.googleapis.com/css?family=Roboto&subset=latin,cyrillic-ext,greek-ext,latin-ext' rel='stylesheet'
+    type='text/css'>
 </head>
+
 <body>
-      <div id="top_header">
-        <div id="logo"></div>
-      </div>
-      <div id="main_video">
-        <div class="imageSub"> <!-- Put Your Image Width -->
-           <div class="blackbg" id="playerstatebg">IDLE</div>
-           <div class=label id="playerstate">IDLE</div>
-           <img src="images/bunny.jpg" id="video_image">
-           <div id="video_image_overlay"></div>
-           <video id="video_element">
-           </video>
-        </div>
+  <div id="top_header">
+    <div id="logo"></div>
+  </div>
+  <div id="main_video">
+    <div class="imageSub">
+      <!-- Put Your Image Width -->
+      <div class="blackbg" id="playerstatebg">IDLE</div>
+      <div class=label id="playerstate">IDLE</div>
+      <img src="imagefiles/bunny.jpg" id="video_image">
+      <div id="video_image_overlay"></div>
+      <video id="video_element">
+      </video>
+    </div>
 
-        <div id="media_control">
-           <div id="play"></div>
-           <div id="pause"></div>
-           <div id="progress_bg"></div>
-           <div id="progress"></div>
-           <div id="progress_indicator"></div>
-           <div id="fullscreen_expand"></div>
-           <div id="fullscreen_collapse"></div>
-           <google-cast-launcher id="castbutton"></google-cast-launcher>
-           <div id="audio_bg"></div>
-           <div id="audio_bg_track"></div>
-           <div id="audio_indicator"></div>
-           <div id="audio_bg_level"></div>
-           <div id="audio_on"></div>
-           <div id="audio_off"></div>
-           <div id="duration">00:00:00</div>
-        </div>
+    <div id="media_control">
+      <div id="play"></div>
+      <div id="pause"></div>
+      <div id="audio_bg"></div>
+      <div id="audio_bg_track"></div>
+      <div id="audio_indicator"></div>
+      <div id="audio_bg_level"></div>
+      <div id="audio_on"></div>
+      <div id="audio_off"></div>
+      <div id="progress_bar_container">
+        <div id="progress_bg"></div>
+        <div id="seekable_window"></div>
+        <div id="progress"></div>
+        <div id="unseekable_overlay"></div>
+        <div id="progress_indicator"></div>
       </div>
-      <div id="media_info">
-        <div id="media_title">
-        </div>
-        <div id="media_subtitle">
-        </div>
-        <div id="media_desc">
-        </div>
-      </div>
+      <div id="fullscreen_expand"></div>
+      <div id="fullscreen_collapse"></div>
+      <google-cast-launcher id="castbutton"></google-cast-launcher>
+      <div id="currentTime">00:00:00</div>
+      <div id="duration">00:00:00</div>
+    </div>
+  </div>
+  <div id="media_info">
+    <div id="media_title"></div>
+    <div id="media_subtitle"></div>
+  </div>
 
-      <div id="carousel">
-      </div>
+  <div id="carousel"></div>
 
-      <div id="footer">
-        <div id="copyright">Copyright 2019 Google LLC. All Rights reserved</div>
-        <div id="footer_content">Visit the <a id="footer_content_link" href="https://developers.google.com/cast/">Google Cast Developer Site</a></div>
-        <div id="footer_language">Language English</div>
-      </div>
+  <div id="footer">
+    <div id="copyright">Copyright 2019 Google LLC. All Rights reserved.</div>
+    <div id="footer_content">Visit the <a id="footer_content_link" href="https://developers.google.com/cast/">Google
+        Cast Developer Site</a></div>
+    <div id="footer_language">Language English</div>
+  </div>
 
-      <script src="CastVideos.js"></script>
-      <script type="text/javascript">
-        var castPlayer = new CastPlayer();
-        window['__onGCastApiAvailable'] = function(isAvailable) {
-            if (isAvailable) {
-                castPlayer.initializeCastPlayer();
-            }
-        };
-      </script>
-      <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+  <script src="CastVideos.js" type="module"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 </body>
+
 </html>
