@@ -17,12 +17,22 @@
 import {
   mediaJSON
 } from './media.js';
+import {
+  breakClipsJSON,
+  breaksJSON
+} from './ads.js';
 
 /** Cleaner UI for demo purposes. */
 const DEMO_MODE = false;
 
 /** @const {string} Media source root URL */
 const MEDIA_SOURCE_ROOT = 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/';
+
+/**
+ * Controls if Ads are enabled. Controlled by radio button.
+ * @type {boolean}
+ */
+let ENABLE_ADS = false;
 
 /**
  * Width of progress bar in pixels.
@@ -70,6 +80,7 @@ const PLAYER_STATE = {
  *  - PlayerHandler object for handling media playback
  *  - Cast player variables for controlling Cast mode media playback
  *  - Current media variables for transition between Cast and local modes
+ *  - Current ad variables for controlling UI based on ad playback
  * @struct @constructor
  */
 var CastPlayer = function () {
@@ -118,6 +129,13 @@ var CastPlayer = function () {
   /* Remote Player variables */
   /** @type {?chrome.cast.media.MediaInfo} Current mediaInfo */
   this.mediaInfo = null;
+  /* Ad variables */
+  /**
+   * @type {?number} The time in seconds when the break clip becomes skippable.
+   * 5 means that the end user can skip this break clip after 5 seconds. If
+   * negative or not defined, it means that the current break clip is not skippable.
+   */
+  this.whenSkippable = null;
 
   this.setupLocalPlayer();
   this.addVideoThumbs();
@@ -327,6 +345,10 @@ var PlayerHandler = function (castPlayer) {
  * Set the PlayerHandler target to use the video-element player
  */
 CastPlayer.prototype.setupLocalPlayer = function () {
+  // Cleanup remote player UI
+  this.removeAdMarkers();
+  document.getElementById('skip').style.display = 'none';
+
   var localPlayer = document.getElementById('video_element');
   localPlayer.addEventListener(
     'loadeddata', this.onMediaLoadedLocally.bind(this));
@@ -471,6 +493,9 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         this.playerHandler.prepareToPlay();
       }
 
+      this.removeAdMarkers();
+      this.updateAdMarkers();
+
       this.playerHandler.updateDisplay();
     }.bind(this)
   );
@@ -517,6 +542,34 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     }.bind(this)
   );
 
+  this.remotePlayerController.addEventListener(
+    cast.framework.RemotePlayerEventType.IS_PLAYING_BREAK_CHANGED,
+    function (event) {
+      this.isPlayingBreak(event.value);
+    }.bind(this)
+  );
+
+  this.remotePlayerController.addEventListener(
+    cast.framework.RemotePlayerEventType.WHEN_SKIPPABLE_CHANGED,
+    function (event) {
+      this.onWhenSkippableChanged(event.value);
+    }.bind(this)
+  );
+
+  this.remotePlayerController.addEventListener(
+    cast.framework.RemotePlayerEventType.CURRENT_BREAK_CLIP_TIME_CHANGED,
+    function (event) {
+      this.onCurrentBreakClipTimeChanged(event.value);
+    }.bind(this)
+  );
+
+  this.remotePlayerController.addEventListener(
+    cast.framework.RemotePlayerEventType.BREAK_CLIP_ID_CHANGED,
+    function (event) {
+      this.onBreakClipIdChanged(event.value);
+    }.bind(this)
+  );
+
   // This object will implement PlayerHandler callbacks with
   // remotePlayerController, and makes necessary UI updates specific
   // to remote playback.
@@ -551,16 +604,16 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
     mediaInfo.metadata.title = this.mediaContents[mediaIndex]['title'];
     mediaInfo.metadata.subtitle = this.mediaContents[mediaIndex]['subtitle'];
-    mediaInfo.metadata.description = this.mediaContents[mediaIndex]['description'];
     mediaInfo.metadata.images = [{
       'url': MEDIA_SOURCE_ROOT + this.mediaContents[mediaIndex]['thumb']
     }];
-    // Add description to custom data.
-    let customData = {
-      description: this.mediaContents[mediaIndex]['description']
-    };
-    mediaInfo.customData = customData;
     mediaInfo.streamType = chrome.cast.media.StreamType.BUFFERED;
+
+    if (ENABLE_ADS) {
+      // Add sample breaks and breakClips.
+      mediaInfo.breakClips = breakClipsJSON;
+      mediaInfo.breaks = breaksJSON;
+    }
 
     let request = new chrome.cast.media.LoadRequest(mediaInfo);
     request.currentTime = this.currentMediaTime;
@@ -746,6 +799,11 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     cast.framework.SessionState.SESSION_RESUMED) {
     console.log('Resuming session');
     this.playerHandler.prepareToPlay();
+
+    // New media has been loaded so the previous ad markers should
+    // be removed.
+    this.removeAdMarkers();
+    this.updateAdMarkers();
   } else {
     this.playerHandler.load();
   }
@@ -787,8 +845,11 @@ CastPlayer.prototype.selectMedia = function (mediaIndex) {
   seekable_window.style.width = PROGRESS_BAR_WIDTH;
   unseekable_overlay.style.width = '0px';
 
-  // Reset currentMediaTime
+  // Stop timer and reset time displays
+  this.stopProgressTimer();
   this.currentMediaTime = 0;
+  this.playerHandler.setTimeString(document.getElementById('currentTime'), 0);
+  this.playerHandler.setTimeString(document.getElementById('duration'), 0);
 
   this.playerState = PLAYER_STATE.IDLE;
   this.playerHandler.play();
@@ -895,6 +956,7 @@ CastPlayer.prototype.updateProgressBarByTimer = function () {
     console.log('Error - Duration is not defined for a VOD stream.');
 
     progressBar.style.width = '0px';
+    document.getElementById('skip').style.display = 'none';
     pi.style.display = 'none';
 
     let seekable_window = document.getElementById('seekable_window');
@@ -966,6 +1028,123 @@ CastPlayer.prototype.getMediaTimeString = function (timestamp) {
 
   return hours + ':' + minutes + ':' + seconds;
 };
+
+/*
+ * Updates Ad markers in UI
+ */
+CastPlayer.prototype.updateAdMarkers = function () {
+  let castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+  if (!castSession) return;
+
+  let media = castSession.getMediaSession();
+  if (!media) return;
+
+  let mediaInfo = media.media;
+  if (!mediaInfo) return;
+
+  let breaks = mediaInfo.breaks;
+  let contentDuration = mediaInfo.duration;
+
+  if (!breaks) {
+    return;
+  }
+
+  for (var i = 0; i < breaks.length; i++) {
+    let adBreak = breaks[i];
+
+    // Server-side stitched Ads (embedded) are skipped when the position is beyond
+    // the duration, so they shouldn't be shown with an ad marker on the UI.
+    if (adBreak.position > contentDuration && adBreak.isEmbedded) {
+      continue;
+    }
+
+    // Place marker if not already set in position
+    if (!document.getElementById('ad' + adBreak.position)) {
+      var div = document.getElementById('progress')
+      div.innerHTML += '<div class="adMarker" id="ad' + adBreak.position +
+        '" style="margin-left: ' +
+        this.adPositionToMargin(adBreak.position, contentDuration) + 'px"></div>';
+    }
+  }
+};
+
+/**
+ * Remove Ad markers in UI
+ */
+CastPlayer.prototype.removeAdMarkers = function () {
+  document.querySelectorAll('.adMarker').forEach(function (adMarker) {
+    adMarker.remove();
+  });
+};
+
+/**
+ * Position of the ad marker from the margin
+ */
+CastPlayer.prototype.adPositionToMargin = function (position, contentDuration) {
+  // Past-roll
+  if (position == -1) {
+    return PROGRESS_BAR_WIDTH;
+  }
+
+  // Client stitched Ads (not embedded) beyond the duration, will play at the
+  // end of the content.
+  if (position > contentDuration) {
+    return PROGRESS_BAR_WIDTH;
+  }
+
+  // Convert Ad position to margin
+  return (PROGRESS_BAR_WIDTH * position) / contentDuration;
+};
+
+/**
+ * Handle BREAK_CLIP_ID_CHANGED event
+ */
+CastPlayer.prototype.onBreakClipIdChanged = function () {
+  // Hide skip button when switching to a new breakClip
+  document.getElementById('skip').style.display = 'none';
+};
+
+/**
+ * Disable progress bar if playing a break.
+ */
+CastPlayer.prototype.isPlayingBreak = function (isPlayingBreak) {
+  this.enableProgressBar(!isPlayingBreak);
+};
+
+/**
+ * Handle WHEN_SKIPPABLE_CHANGED event
+ */
+CastPlayer.prototype.onWhenSkippableChanged = function (whenSkippable) {
+  this.whenSkippable = whenSkippable;
+};
+
+/**
+ * Handle CURRENT_BREAK_CLIP_TIME_CHANGED event
+ */
+CastPlayer.prototype.onCurrentBreakClipTimeChanged = function (currentBreakClipTime) {
+  // Unskippable
+  if (this.whenSkippable == undefined || this.whenSkippable < 0) {
+    // Hide skip button
+    document.getElementById('skip').style.display = 'none';
+  }
+  // Skippable
+  else if (this.whenSkippable !== undefined || currentBreakClipTime >= this.whenSkippable) {
+    // Show skip button
+    document.getElementById('skip').style.display = 'block';
+  }
+  // Not ready to be skipped
+  else {
+    // Hide skip button
+    document.getElementById('skip').style.display = 'none';
+  }
+};
+
+/**
+ * Skip the current Ad
+ */
+CastPlayer.prototype.skipAd = function () {
+  this.remotePlayerController.skipAd();
+}
 
 /**
  * Enable/disable progress bar
@@ -1117,7 +1296,7 @@ CastPlayer.prototype.resetVolumeSlider = function () {
  * Initialize UI components and add event listeners
  */
 CastPlayer.prototype.initializeUI = function () {
-  // Set initial values for title, subtitle, and description
+  // Set initial values for title and subtitle.
   document.getElementById('media_title').innerHTML =
     this.mediaContents[0]['title'];
   document.getElementById('media_subtitle').innerHTML =
@@ -1128,6 +1307,8 @@ CastPlayer.prototype.initializeUI = function () {
     'click', this.seekMediaListener);
   document.getElementById('progress_indicator').addEventListener(
     'dragend', this.seekMediaListener);
+  document.getElementById('skip').addEventListener(
+    'click', this.skipAd.bind(this));
   document.getElementById('audio_on').addEventListener(
     'click', this.playerHandler.mute.bind(this.playerHandler));
   document.getElementById('audio_off').addEventListener(
@@ -1172,6 +1353,26 @@ CastPlayer.prototype.initializeUI = function () {
     'click', this.playerHandler.pause.bind(this.playerHandler));
 
   document.getElementById('progress_indicator').draggable = true;
+
+  // Set up feature radio buttons
+  let noneRadio = document.getElementById('none');
+  noneRadio.onclick = function () {
+    ENABLE_ADS = false;
+    console.log("Features have been removed");
+  }
+  let adsRadio = document.getElementById('ads');
+  adsRadio.onclick = function () {
+    ENABLE_ADS = true;
+    console.log("Ads have been enabled");
+  }
+
+  if (ENABLE_ADS) {
+    adsRadio.checked = true;
+    console.log("Ads are enabled");
+  } else {
+    noneRadio.checked = true;
+    console.log("No features are enabled");
+  }
 };
 
 /**
