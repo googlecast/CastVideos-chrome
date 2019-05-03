@@ -35,6 +35,19 @@ const MEDIA_SOURCE_ROOT = 'http://commondatastorage.googleapis.com/gtv-videos-bu
 let ENABLE_ADS = false;
 
 /**
+ * Controls if Live stream is played. Controlled by radio button.
+ * @type {boolean}
+ */
+let ENABLE_LIVE = false;
+
+/**
+ * Buffer to decide if the live indicator should be displayed to show that
+ * playback is at the playback head.
+ * @const {number}
+ */
+const LIVE_INDICATOR_BUFFER = 50;
+
+/**
  * Width of progress bar in pixels.
  * @const {number}
  */
@@ -81,6 +94,7 @@ const PLAYER_STATE = {
  *  - Cast player variables for controlling Cast mode media playback
  *  - Current media variables for transition between Cast and local modes
  *  - Current ad variables for controlling UI based on ad playback
+ *  - Current live variables for controlling UI based on ad playback
  * @struct @constructor
  */
 var CastPlayer = function () {
@@ -136,6 +150,12 @@ var CastPlayer = function () {
    * negative or not defined, it means that the current break clip is not skippable.
    */
   this.whenSkippable = null;
+
+  /* Live variables */
+  /** @type {?chrome.cast.media.LiveSeekableRange} Seekable range for live content */
+  this.liveSeekableRange = null;
+  /** @type {boolean} Remote player is playing live content. */
+  this.isLiveContent = false;
 
   this.setupLocalPlayer();
   this.addVideoThumbs();
@@ -346,6 +366,7 @@ var PlayerHandler = function (castPlayer) {
  */
 CastPlayer.prototype.setupLocalPlayer = function () {
   // Cleanup remote player UI
+  document.getElementById('live_indicator').style.display = 'none';
   this.removeAdMarkers();
   document.getElementById('skip').style.display = 'none';
 
@@ -476,6 +497,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
       let session = cast.framework.CastContext.getInstance().getCurrentSession();
       if (!session) {
         this.mediaInfo = null;
+        this.isLiveContent = false;
         this.playerHandler.updateDisplay();
         return;
       }
@@ -483,11 +505,19 @@ CastPlayer.prototype.setupRemotePlayer = function () {
       let media = session.getMediaSession();
       if (!media) {
         this.mediaInfo = null;
+        this.isLiveContent = false;
         this.playerHandler.updateDisplay();
         return;
       }
 
       this.mediaInfo = media.media;
+
+      if (this.mediaInfo) {
+        this.isLiveContent = (this.mediaInfo.streamType ==
+          chrome.cast.media.StreamType.LIVE);
+      } else {
+        this.isLiveContent = false;
+      }
 
       if (media.playerState == PLAYER_STATE.PLAYING && this.playerState !== PLAYER_STATE.PLAYING) {
         this.playerHandler.prepareToPlay();
@@ -570,6 +600,14 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     }.bind(this)
   );
 
+  this.remotePlayerController.addEventListener(
+    cast.framework.RemotePlayerEventType.LIVE_SEEKABLE_RANGE_CHANGED,
+    function (event) {
+      console.log('LIVE_SEEKABLE_RANGE_CHANGED');
+      this.liveSeekableRange = event.value;
+    }.bind(this)
+  );
+
   // This object will implement PlayerHandler callbacks with
   // remotePlayerController, and makes necessary UI updates specific
   // to remote playback.
@@ -601,22 +639,48 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     console.log('Loading...' + this.mediaContents[mediaIndex]['title']);
 
     let mediaInfo = new chrome.cast.media.MediaInfo(this.mediaContents[mediaIndex]['sources'][0], 'video/mp4');
-    mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+    mediaInfo.streamType = chrome.cast.media.StreamType.BUFFERED;
+    mediaInfo.metadata = new chrome.cast.media.TvShowMediaMetadata();
     mediaInfo.metadata.title = this.mediaContents[mediaIndex]['title'];
     mediaInfo.metadata.subtitle = this.mediaContents[mediaIndex]['subtitle'];
     mediaInfo.metadata.images = [{
       'url': MEDIA_SOURCE_ROOT + this.mediaContents[mediaIndex]['thumb']
     }];
-    mediaInfo.streamType = chrome.cast.media.StreamType.BUFFERED;
+
+    let request = new chrome.cast.media.LoadRequest(mediaInfo);
+    request.currentTime = this.currentMediaTime;
 
     if (ENABLE_ADS) {
       // Add sample breaks and breakClips.
       mediaInfo.breakClips = breakClipsJSON;
       mediaInfo.breaks = breaksJSON;
-    }
+    } else if (ENABLE_LIVE) {
+      // Change the streamType and add live specific metadata.
+      mediaInfo.streamType = chrome.cast.media.StreamType.LIVE;
+      // TODO: Set the metadata on the receiver side in your implementation.
+      // startAbsoluteTime and sectionStartTimeInMedia will be set for you.
+      // See https://developers.google.com/cast/docs/caf_receiver/live.
 
-    let request = new chrome.cast.media.LoadRequest(mediaInfo);
-    request.currentTime = this.currentMediaTime;
+      // TODO: Start time, is a fake timestamp. Use correct values for your implementation.
+      let currentTime = new Date();
+      // Convert from milliseconds to seconds.
+      currentTime = currentTime / 1000;
+      let sectionStartAbsoluteTime = currentTime;
+
+      // Duration should be -1 for live streams.
+      mediaInfo.duration = -1;
+      // TODO: Set on the receiver for your implementation.
+      mediaInfo.startAbsoluteTime = currentTime;
+      mediaInfo.metadata.sectionStartAbsoluteTime = sectionStartAbsoluteTime;
+      // TODO: Set on the receiver for your implementation.
+      mediaInfo.metadata.sectionStartTimeInMedia = 0;
+      mediaInfo.metadata.sectionDuration = this.mediaContents[mediaIndex]['duration'];
+
+      let item = new chrome.cast.media.QueueItem(mediaInfo);
+      request.queueData = new chrome.cast.media.QueueData();
+      request.queueData.items = [item];
+      request.queueData.name = "Sample Queue for Live";
+    }
 
     // Do not immediately start playing if the player was previously PAUSED.
     if (!this.playerStateBeforeSwitch || this.playerStateBeforeSwitch == PLAYER_STATE.PAUSED) {
@@ -652,12 +716,37 @@ CastPlayer.prototype.setupRemotePlayer = function () {
     return true;
   }.bind(this);
 
+  /**
+   * @return {number?} Current media time for the content. Always returns
+   *      media time even if in clock time (conversion done when displaying).
+   */
   playerTarget.getCurrentMediaTime = function () {
-    return this.remotePlayer.currentTime;
+    if (this.isLiveContent && this.mediaInfo.metadata &&
+      this.mediaInfo.metadata.sectionStartTimeInMedia) {
+      return this.remotePlayer.currentTime - this.mediaInfo.metadata.sectionStartTimeInMedia;
+    } else {
+      // VOD and live scenerios where live metadata is not provided.
+      return this.remotePlayer.currentTime;
+    }
   }.bind(this);
 
+  /**
+   * @return {number?} media time duration for the content. Always returns
+   *      media time even if in clock time (conversion done when displaying).
+   */
   playerTarget.getMediaDuration = function () {
-    return this.remotePlayer.duration;
+    if (this.isLiveContent) {
+      // Scenerios when live metadata is not provided.
+      if (this.mediaInfo.metadata == undefined ||
+        this.mediaInfo.metadata.sectionDuration == undefined ||
+        this.mediaInfo.metadata.sectionStartTimeInMedia == undefined) {
+        return null;
+      }
+
+      return this.mediaInfo.metadata.sectionDuration;
+    } else {
+      return this.remotePlayer.duration;
+    }
   }.bind(this);
 
   playerTarget.updateDisplay = function () {
@@ -695,10 +784,10 @@ CastPlayer.prototype.setupRemotePlayer = function () {
 
       if (DEMO_MODE) {
         document.getElementById('playerstate').innerHTML =
-          'Sample Video ' + media.playerState + ' on Chromecast';
+          (ENABLE_LIVE ? 'Live Content ' : 'Sample Video ') + media.playerState + ' on Chromecast';
 
         // media_info view
-        document.getElementById('media_title').innerHTML = 'Sample Video';
+        document.getElementById('media_title').innerHTML = (ENABLE_LIVE ? 'Live Content' : 'Sample Video');
         document.getElementById('media_subtitle').innerHTML = '';
       } else {
         document.getElementById('playerstate').innerHTML =
@@ -708,6 +797,24 @@ CastPlayer.prototype.setupRemotePlayer = function () {
         // media_info view
         document.getElementById('media_title').innerHTML = mediaTitle;
         document.getElementById('media_subtitle').innerHTML = mediaSubtitle;
+      }
+
+      // live information
+      if (mediaInfo.streamType == chrome.cast.media.StreamType.LIVE) {
+        this.liveSeekableRange = media.liveSeekableRange;
+
+        let live_indicator = document.getElementById('live_indicator');
+        live_indicator.style.display = 'block';
+
+        // Display indicator if current time is close to the end of
+        // the seekable range.
+        if (this.liveSeekableRange && (Math.abs(media.getEstimatedTime() - this.liveSeekableRange.end) < LIVE_INDICATOR_BUFFER)) {
+          live_indicator.src = "imagefiles/live_indicator_active.png";
+        } else {
+          live_indicator.src = "imagefiles/live_indicator_inactive.png";
+        }
+      } else {
+        document.getElementById('live_indicator').style.display = 'none';
       }
     } else {
       // playerstate view
@@ -732,11 +839,28 @@ CastPlayer.prototype.setupRemotePlayer = function () {
   playerTarget.setTimeString = function (element, time) {
     let currentTimeString = this.getMediaTimeString(time);
 
-    if (currentTimeString !== null) {
-      element.style.display = 'flex';
-      element.innerHTML = currentTimeString;
+    if (this.isLiveContent) {
+      if (currentTimeString == null) {
+        element.style.display = 'none';
+        return;
+      }
+
+      // clock time
+      if (this.mediaInfo.metadata && this.mediaInfo.metadata.sectionStartAbsoluteTime !== undefined) {
+        element.style.display = 'flex';
+        element.innerHTML = this.getClockTimeString(time + this.mediaInfo.metadata.sectionStartAbsoluteTime);
+      } else {
+        // media time
+        element.style.display = 'flex';
+        element.innerHTML = currentTimeString;
+      }
     } else {
-      element.style.display = 'none';
+      if (currentTimeString !== null) {
+        element.style.display = 'flex';
+        element.innerHTML = currentTimeString;
+      } else {
+        element.style.display = 'none';
+      }
     }
   }.bind(this);
 
@@ -865,6 +989,11 @@ CastPlayer.prototype.seekMedia = function (event) {
     return;
   }
 
+  if (this.isLiveContent && !this.liveSeekableRange) {
+    console.log('Live content has no seekable range.')
+    return;
+  }
+
   var position = parseInt(event.offsetX, 10);
   var pi = document.getElementById('progress_indicator');
   var progress = document.getElementById('progress');
@@ -887,6 +1016,10 @@ CastPlayer.prototype.seekMedia = function (event) {
     this.currentMediaTime = seekTime;
     progress.style.width = pw + 'px';
     pi.style.marginLeft = pp + 'px';
+  }
+
+  if (this.isLiveContent) {
+    seekTime += this.mediaInfo.metadata.sectionStartTimeInMedia;
   }
 
   this.playerHandler.seekTo(seekTime);
@@ -937,7 +1070,7 @@ CastPlayer.prototype.incrementMediaTime = function () {
 
   this.playerHandler.updateDurationDisplay();
 
-  if (this.mediaDuration == null || this.currentMediaTime < this.mediaDuration) {
+  if (this.mediaDuration == null || this.currentMediaTime < this.mediaDuration || this.isLiveContent) {
     this.playerHandler.updateCurrentTimeDisplay();
     this.updateProgressBarByTimer();
   } else if (this.mediaDuration > 0) {
@@ -952,8 +1085,11 @@ CastPlayer.prototype.updateProgressBarByTimer = function () {
   var progressBar = document.getElementById('progress');
   var pi = document.getElementById('progress_indicator');
 
+  // Live situation where the progress and duration is unknown.
   if (this.mediaDuration == null) {
-    console.log('Error - Duration is not defined for a VOD stream.');
+    if (!this.isLiveContent) {
+      console.log('Error - Duration is not defined for a VOD stream.');
+    }
 
     progressBar.style.width = '0px';
     document.getElementById('skip').style.display = 'none';
@@ -986,12 +1122,40 @@ CastPlayer.prototype.updateProgressBarByTimer = function () {
 
   let seekable_window = document.getElementById('seekable_window');
   let unseekable_overlay = document.getElementById('unseekable_overlay');
+  if (this.isLiveContent) {
+    if (this.liveSeekableRange) {
+      // Use the liveSeekableRange to draw the seekable and unseekable windows
+      let seekableMediaPosition = Math.max(this.mediaInfo.metadata.sectionStartTimeInMedia, this.liveSeekableRange.end) -
+        this.mediaInfo.metadata.sectionStartTimeInMedia;
+      let seekableWidth = Math.floor(PROGRESS_BAR_WIDTH * seekableMediaPosition / this.mediaDuration);
+      if (seekableWidth > PROGRESS_BAR_WIDTH) {
+        seekableWidth = PROGRESS_BAR_WIDTH;
+      } else if (seekableWidth < 0) {
+        seekableWidth = 0;
+      }
+      seekable_window.style.width = seekableWidth + 'px';
 
-  // Default to everything seekable
-  seekable_window.style.width = PROGRESS_BAR_WIDTH + 'px';
-  unseekable_overlay.style.width = '0px';
+      let unseekableMediaPosition = Math.max(this.mediaInfo.metadata.sectionStartTimeInMedia, this.liveSeekableRange.start) -
+        this.mediaInfo.metadata.sectionStartTimeInMedia;
+      let unseekableWidth = Math.floor(PROGRESS_BAR_WIDTH * unseekableMediaPosition / this.mediaDuration);
+      if (unseekableWidth > PROGRESS_BAR_WIDTH) {
+        unseekableWidth = PROGRESS_BAR_WIDTH;
+      } else if (unseekableWidth < 0) {
+        unseekableWidth = 0;
+      }
+      unseekable_overlay.style.width = unseekableWidth + 'px';
+    } else {
+      // Nothing is seekable if no liveSeekableRange
+      seekable_window.style.width = '0px';
+      unseekable_overlay.style.width = PROGRESS_BAR_WIDTH + 'px';
+    }
+  } else {
+    // Default to everything seekable
+    seekable_window.style.width = PROGRESS_BAR_WIDTH + 'px';
+    unseekable_overlay.style.width = '0px';
+  }
 
-  if (pp >= PROGRESS_BAR_WIDTH) {
+  if (pp >= PROGRESS_BAR_WIDTH && !this.isLiveContent) {
     this.endPlayback();
   }
 };
@@ -1018,6 +1182,12 @@ CastPlayer.prototype.getMediaTimeString = function (timestamp) {
     return null;
   }
 
+  let isNegative = false;
+  if (timestamp < 0) {
+    isNegative = true;
+    timestamp *= -1;
+  }
+
   let hours = Math.floor(timestamp / 3600);
   let minutes = Math.floor((timestamp - (hours * 3600)) / 60);
   let seconds = Math.floor(timestamp - (hours * 3600) - (minutes * 60));
@@ -1026,10 +1196,31 @@ CastPlayer.prototype.getMediaTimeString = function (timestamp) {
   if (minutes < 10) minutes = '0' + minutes;
   if (seconds < 10) seconds = '0' + seconds;
 
-  return hours + ':' + minutes + ':' + seconds;
+  return (isNegative ? '-' : '') + hours + ':' + minutes + ':' + seconds;
 };
 
-/*
+/**
+ * @param {number} timestamp Linux timestamp
+ * @return {?string} ClockTime string. Null if time is invalid.
+ */
+CastPlayer.prototype.getClockTimeString = function (timestamp) {
+  if (!timestamp) return "0:00:00";
+
+  let date = new Date(timestamp * 1000);
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  let seconds = date.getSeconds();
+  let ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  // Hour '0' should be '12'
+  hours = hours ? hours : 12;
+  minutes = ('0' + minutes).slice(-2);
+  seconds = ('0' + seconds).slice(-2);
+  let clockTime = hours + ':' + minutes + ':' + seconds + ' ' + ampm;
+  return clockTime;
+};
+
+/**
  * Updates Ad markers in UI
  */
 CastPlayer.prototype.updateAdMarkers = function () {
@@ -1081,7 +1272,7 @@ CastPlayer.prototype.removeAdMarkers = function () {
  * Position of the ad marker from the margin
  */
 CastPlayer.prototype.adPositionToMargin = function (position, contentDuration) {
-  // Past-roll
+  // Post-roll
   if (position == -1) {
     return PROGRESS_BAR_WIDTH;
   }
@@ -1357,18 +1548,32 @@ CastPlayer.prototype.initializeUI = function () {
   // Set up feature radio buttons
   let noneRadio = document.getElementById('none');
   noneRadio.onclick = function () {
+    ENABLE_LIVE = false;
     ENABLE_ADS = false;
     console.log("Features have been removed");
   }
   let adsRadio = document.getElementById('ads');
   adsRadio.onclick = function () {
+    ENABLE_LIVE = false;
     ENABLE_ADS = true;
     console.log("Ads have been enabled");
   }
+  let liveRadio = document.getElementById('live');
+  liveRadio.onclick = function () {
+    ENABLE_LIVE = true;
+    ENABLE_ADS = false;
+    console.log("Live has been enabled");
+  }
 
   if (ENABLE_ADS) {
+    if (ENABLE_LIVE) {
+      console.log.error('Only one feature can be enabled at a time. Enabling ads.');
+    }
     adsRadio.checked = true;
     console.log("Ads are enabled");
+  } else if (ENABLE_LIVE) {
+    liveRadio.checked = true;
+    console.log("Live is enabled");
   } else {
     noneRadio.checked = true;
     console.log("No features are enabled");

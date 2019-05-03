@@ -459,6 +459,15 @@ radio {
   margin: 8px 0px 0px 0px;
 }
 
+#live_indicator {
+  position: absolute;
+  right: 190px;
+  top: 22px;
+  height: 20px;
+  margin: 8px 30px 0px 0px;
+  display: none;
+}
+
 #skip {
   background-image: url('../imagefiles/skip.png');
   color: white;
