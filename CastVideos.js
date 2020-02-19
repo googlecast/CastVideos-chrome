@@ -1567,7 +1567,7 @@ CastPlayer.prototype.initializeUI = function () {
 
   if (ENABLE_ADS) {
     if (ENABLE_LIVE) {
-      console.log.error('Only one feature can be enabled at a time. Enabling ads.');
+      console.error('Only one feature can be enabled at a time. Enabling ads.');
     }
     adsRadio.checked = true;
     console.log("Ads are enabled");
