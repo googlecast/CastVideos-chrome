@@ -1,0 +1,3 @@
+[submodule "rhea"]
+	path = rhea
+	url = git@github.com:pennz/rhea.git
