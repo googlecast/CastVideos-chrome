@@ -168,7 +168,7 @@ CastPlayer.prototype.initializeCastPlayer = function () {
   // Set the receiver application ID to your own (created in the
   // Google Cast Developer Console), or optionally
   // use the chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID
-  options.receiverApplicationId = 'C0868879';
+  options.receiverApplicationId = 'CC1AD845';
 
   // Auto join policy can be one of the following three:
   // ORIGIN_SCOPED - Auto connect from same appId and page origin
@@ -1567,7 +1567,7 @@ CastPlayer.prototype.initializeUI = function () {
 
   if (ENABLE_ADS) {
     if (ENABLE_LIVE) {
-      console.log.error('Only one feature can be enabled at a time. Enabling ads.');
+      console.error('Only one feature can be enabled at a time. Enabling ads.');
     }
     adsRadio.checked = true;
     console.log("Ads are enabled");
