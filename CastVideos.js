@@ -168,13 +168,16 @@ CastPlayer.prototype.initializeCastPlayer = function () {
   // Set the receiver application ID to your own (created in the
   // Google Cast Developer Console), or optionally
   // use the chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID
-  options.receiverApplicationId = 'CC1AD845';
+  options.receiverApplicationId = 'C0868879';
 
   // Auto join policy can be one of the following three:
   // ORIGIN_SCOPED - Auto connect from same appId and page origin
   // TAB_AND_ORIGIN_SCOPED - Auto connect from same appId, page origin, and tab
   // PAGE_SCOPED - No auto connect
   options.autoJoinPolicy = chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED;
+
+  /** The following flag enables Cast Connect(requires Chrome 87 or higher) */
+  options.androidReceiverCompatible = true;
 
   cast.framework.CastContext.getInstance().setOptions(options);
 
