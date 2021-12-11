@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC. All Rights Reserved.
+// Copyright 2021 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ let breakClipsJSON = [{
 }, {
   id: 'bc1',
   whenSkippable: 4,
-  contentUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  contentType: 'video/mp4',
+  contentUrl: 'https://storage.googleapis.com/cpe-sample-media/content/ads/for_bigger_blazes/for_bigger_blazes_m4s_master.mpd',
+  contentType: 'application/dash+xml',
   clickThroughUrl: 'https://store.google.com/us/product/chromecast',
   title: 'For Bigger Blazes - Skippable'
 }, {
@@ -44,22 +44,22 @@ let breakClipsJSON = [{
   }
 }, {
   id: 'bc4',
-  contentUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  contentType: 'video/mp4',
+  contentUrl: 'https://storage.googleapis.com/cpe-sample-media/content/ads/for_bigger_escapes/for_bigger_escapes_m4s_master.mpd',
+  contentType: 'application/dash+xml',
   clickThroughUrl: 'https://store.google.com/us/product/chromecast',
   title: 'For Bigger Escape'
 }, {
   id: 'bc5',
   whenSkippable: 7,
-  contentUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-  contentType: 'video/mp4',
+  contentUrl: 'https://storage.googleapis.com/cpe-sample-media/content/ads/for_bigger_meltdowns/for_bigger_meltdowns_m4s_master.mpd',
+  contentType: 'application/dash+xml',
   clickThroughUrl: 'https://store.google.com/us/product/chromecast',
   title: 'For Bigger Meltdowns - Skippable'
 }, {
   id: 'bc6',
   whenSkippable: 3,
-  contentUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-  contentType: 'video/mp4',
+  contentUrl: 'https://storage.googleapis.com/cpe-sample-media/content/ads/for_bigger_joyrides/for_bigger_joyrides_m4s_master.mpd',
+  contentType: 'application/dash+xml',
   clickThroughUrl: 'https://store.google.com/us/product/chromecast',
   title: 'For Bigger Joyrides - Skippable'
 }];

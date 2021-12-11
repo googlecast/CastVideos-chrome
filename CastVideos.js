@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC. All Rights Reserved.
+// Copyright 2021 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import {
 const DEMO_MODE = false;
 
 /** @const {string} Media source root URL */
-const MEDIA_SOURCE_ROOT = 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/';
+const MEDIA_SOURCE_ROOT = 'https://storage.googleapis.com/cpe-sample-media/content/';
 
 /**
  * Controls if Ads are enabled. Controlled by radio button.
@@ -397,7 +397,7 @@ CastPlayer.prototype.setupLocalPlayer = function () {
   };
 
   playerTarget.load = function (mediaIndex) {
-    localPlayer.src = this.mediaContents[mediaIndex]['sources'][0];
+    localPlayer.src = MEDIA_SOURCE_ROOT + this.mediaContents[mediaIndex]['contentUrl'];
     localPlayer.load();
   }.bind(this);
 
@@ -405,7 +405,7 @@ CastPlayer.prototype.setupLocalPlayer = function () {
     if (!mediaIndex) {
       return (localPlayer.src !== null && localPlayer.src !== "");
     } else {
-      return (localPlayer.src == this.mediaContents[mediaIndex]['sources'][0]);
+      return (localPlayer.src == MEDIA_SOURCE_ROOT + this.mediaContents[mediaIndex]['contentUrl']);
     }
   }.bind(this);
 
@@ -641,7 +641,7 @@ CastPlayer.prototype.setupRemotePlayer = function () {
   playerTarget.load = function (mediaIndex) {
     console.log('Loading...' + this.mediaContents[mediaIndex]['title']);
 
-    let mediaInfo = new chrome.cast.media.MediaInfo(this.mediaContents[mediaIndex]['sources'][0], 'video/mp4');
+    let mediaInfo = new chrome.cast.media.MediaInfo(MEDIA_SOURCE_ROOT + this.mediaContents[mediaIndex]['contentUrl'], this.mediaContents[mediaIndex]['contentType']);
     mediaInfo.streamType = chrome.cast.media.StreamType.BUFFERED;
     mediaInfo.metadata = new chrome.cast.media.TvShowMediaMetadata();
     mediaInfo.metadata.title = this.mediaContents[mediaIndex]['title'];
@@ -763,6 +763,8 @@ CastPlayer.prototype.setupRemotePlayer = function () {
       if (mediaInfo.metadata && mediaInfo.metadata.images &&
         mediaInfo.metadata.images.length > 0) {
         vi.src = mediaInfo.metadata.images[0].url;
+      } else {
+        vi.src = null;
       }
 
       // playerstate view
@@ -1322,7 +1324,7 @@ CastPlayer.prototype.onCurrentBreakClipTimeChanged = function (currentBreakClipT
     document.getElementById('skip').style.display = 'none';
   }
   // Skippable
-  else if (this.whenSkippable !== undefined || currentBreakClipTime >= this.whenSkippable) {
+  else if (currentBreakClipTime >= this.whenSkippable) {
     // Show skip button
     document.getElementById('skip').style.display = 'block';
   }
@@ -1587,7 +1589,7 @@ CastPlayer.prototype.initializeUI = function () {
  * Add video thumbnails div's to UI for media JSON contents
  */
 CastPlayer.prototype.addVideoThumbs = function () {
-  this.mediaContents = mediaJSON['categories'][0]['videos'];
+  this.mediaContents = mediaJSON['media'];
   var ni = document.getElementById('carousel');
   var newdiv = null;
   var divIdName = null;
